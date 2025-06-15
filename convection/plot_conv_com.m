@@ -1,0 +1,148 @@
+clear
+clc
+
+nmin = 1;
+N = 400; % wall-normal grid
+R = 8900; % Reynolds number
+nc = 201; % omega grid
+nkx = 120; % kx grid                
+nkz = 120; % kz grid
+
+method = 'IOA';
+eddy = 'eddyoff';
+wall = 'com';
+Y = [];
+Cm = 0.46; Ck = 181; Cd=0.091;
+
+% Small scales are not considered
+lambdax_min = 500;
+lambdaz_min = 80;
+
+kxVector = logspace(-7,0,nkx).*R;
+kzVector = logspace(-7,0,nkz).*R;
+
+lambdaxVector = 2.*pi./kxVector .*R;
+lambdazVector = 2.*pi./kzVector .*R;
+kx_matrix = zeros(nkx,nkz,N);
+kz_matrix = zeros(nkx,nkz,N);
+for ikx = 1:nkx
+    kx_matrix(ikx,:,:) = kxVector(ikx)* ones(1,nkz,N);
+end
+for ikz = 1:nkz
+    kz_matrix(:,ikz,:) = kzVector(ikz)* ones(nkx,1,N);
+end
+n1=length(find(lambdaxVector > lambdax_min));
+fprintf('lambdax = %d \n',lambdaxVector(n1))
+n2=length(find(lambdazVector > lambdaz_min));
+fprintf('lambdaz = %d \n',lambdazVector(n2))
+path0 = ['_N=',num2str(N),'nc=',num2str(nc),'nkx=',num2str(nkx),'nkz=',num2str(nkz),'_R=',num2str(R),'_Cm=',num2str(Cm),'_Ck=',num2str(Ck),'_Cd=',num2str(Cd),eddy,'kplus-70_final'];
+
+%% read data
+uvwp = 'u';
+
+path = [wall,'/',uvwp,'/psd_kx_kz',path0];
+load([path,'.mat'],'psd_ave');
+path = [wall,'/',uvwp,'/cmax',path0];
+load([path,'.mat'],'cmax');
+
+h = psd_ave.*kx_matrix.*kx_matrix.*kx_matrix.*kx_matrix.*kz_matrix; % The weighted log integral is kx times kz. And d\omega=dc*kx, should times another kx.
+u_vec = squeeze(sum(cmax(nmin:n1,nmin:n2,N/2:end) .* h(nmin:n1,nmin:n2,N/2:end),[1 2])) ./ squeeze(sum(h(nmin:n1,nmin:n2,N/2:end),[1 2])); % Small scales are not considered
+
+%% read data
+uvwp = 'v';
+
+path = [wall,'/',uvwp,'/psd_kx_kz',path0];
+load([path,'.mat'],'psd_ave');
+path = [wall,'/',uvwp,'/cmax',path0];
+load([path,'.mat'],'cmax');
+
+h = psd_ave.*kx_matrix.*kx_matrix.*kx_matrix.*kx_matrix.*kz_matrix;
+v_vec = squeeze(sum(cmax(nmin:n1,nmin:n2,N/2:end) .* h(nmin:n1,nmin:n2,N/2:end),[1 2])) ./ squeeze(sum(h(nmin:n1,nmin:n2,N/2:end),[1 2]));
+
+%% read data
+uvwp = 'p';
+
+path = [wall,'/',uvwp,'/psd_kx_kz',path0];
+load([path,'.mat'],'psd_ave');
+path = [wall,'/',uvwp,'/cmax',path0];
+load([path,'.mat'],'cmax');
+
+h = psd_ave.*kx_matrix.*kx_matrix.*kx_matrix.*kx_matrix.*kz_matrix;
+p_vec = squeeze(sum(cmax(1:n1,1:n2,N/2:end) .* h(1:n1,1:n2,N/2:end),[1 2])) ./ squeeze(sum(h(1:n1,1:n2,N/2:end),[1 2]));
+
+%% u mean
+[y,~] = chebdif(N,2);
+
+if R==3300
+load('COMUmean3300.mat','Umean');
+U0 = Umean;
+uc = 26;
+yc = 64;
+n=76;
+load('EXPp3300.mat','EXPp3300');
+load('EXPu3300.mat','EXPu3300');
+load('EXPv3300.mat','EXPv3300');
+EXPp = EXPp3300;
+EXPu = EXPu3300;
+EXPv = EXPv3300;
+end
+if R==6700
+load('COMUmean6700.mat','Umean');
+U0 = Umean;
+uc = 28;
+yc = 165;
+n=115;
+load('EXPp6700.mat','EXPp6700');
+load('EXPu6700.mat','EXPu6700');
+load('EXPv6700.mat','EXPv6700');
+EXPp = EXPp6700;
+EXPu = EXPu6700;
+EXPv = EXPv6700;
+end
+if R==8900
+load('COMUmean8900.mat','Umean');
+U0 = Umean;
+uc = 28;
+yc = 192;
+n=130;
+load('EXPp8900.mat','EXPp8900');
+load('EXPu8900.mat','EXPu8900');
+load('EXPv8900.mat','EXPv8900');
+EXPp = EXPp8900;
+EXPu = EXPu8900;
+EXPv = EXPv8900;
+end
+
+%% plot
+figure;
+
+[y,~] = chebdif(N,2);
+yplus = (y+1)*R;
+nsize = 16;
+n=10; % Close to the center of the channel is not drawn
+semilogx(yplus(N/2+n:end,1)./yc,u_vec(n+1:end,1),'--b','linewidth',3,'Markersize',nsize); hold on
+semilogx(yplus(N/2+n:end,1)./yc,v_vec(n+1:end,1),'--','Color',[0.196 0.804 0.196],'linewidth',3,'Markersize',nsize); hold on
+semilogx(yplus(N/2+n:end,1)./yc,p_vec(n+1:end,1),'r','linewidth',3,'Markersize',nsize); hold on
+
+semilogx(EXPu(:,1),EXPu(:,2).*uc,'bo','linewidth',3,'Markersize',nsize);hold on
+semilogx(EXPv(:,1),EXPv(:,2).*uc,'*','Color',[0.196 0.804 0.196],'linewidth',3,'Markersize',nsize);hold on
+semilogx(EXPp(:,1),EXPp(:,2).*uc,'r^','linewidth',3,'Markersize',nsize);hold on
+
+semilogx(yplus(N/2:end,1)./yc,U0(N/2:end,1),':k','linewidth',3);hold on
+
+yline(0.53*uc,'--k','Linewidth',2);
+xline(1,'-k','Linewidth',2);
+
+fontn = 26;
+axis([0.3 10 12 22])
+xlabel('$y^+/y_c^+$','Interpreter','latex');
+ylabel('$\bar{c}^+_\psi,U^+$','Interpreter','latex');
+
+set(gcf,'unit','centimeters','position',[10 7 18 15]);
+set(gca,'unit','centimeters','position',[3.5,2.9,13.5,11],'fontsize',fontn,'fontname','Times')
+
+% legend('$\bar{c}^+_u$','$\bar{c}^+_v$','$\bar{c}^+_p$','Exp-$\bar{c}^+_u$','Exp-$\bar{c}^+_v$','Exp-$\bar{c}^+_p$','$U^+$','$U_{wall}$','Interpreter','latex','location','eastoutside')
+grid on
+
+path = ['H:/resolvent_convection/',wall,'/',uvwp,'/uvwp',path0,num2str(lambdax_min)];
+print('-dpng','-r300', [path,'.png'])
