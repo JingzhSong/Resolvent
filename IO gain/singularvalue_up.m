@@ -65,20 +65,20 @@ end
 
 if strcmp(method,'IOA')
     C = [eye(3*N),zeros(3*N,N)];
-    [~,w]=clencurt(N+1);
-    IWC = blkdiag(diag(w(2:N+1).^0.5),diag(w(2:N+1).^0.5),diag(w(2:N+1).^0.5));
+    [~,w]=clencurt(N-1);
+    IWC = blkdiag(diag(w.^0.5),diag(w.^0.5),diag(w.^0.5));
     C = IWC*C;
 end
 
 if strcmp(method,'SIOA')
     C = [blkdiag(grd,grd,grd),zeros(9*N,N)];
-    [~,w]=clencurt(N+1);
-    IWC = blkdiag(diag(w(2:N+1).^0.5),diag(w(2:N+1).^0.5),diag(w(2:N+1).^0.5));
+    [~,w]=clencurt(N-1);
+    IWC = blkdiag(diag(w.^0.5),diag(w.^0.5),diag(w.^0.5));
     C = blkdiag(IWC,IWC,IWC)*C;
 end
 
 B = [eye(3*N); zeros(N,3*N)];
-IWB = blkdiag(diag(w(2:N+1).^(-0.5)),diag(w(2:N+1).^(-0.5)),diag(w(2:N+1).^(-0.5)));
+IWB = blkdiag(diag(w.^(-0.5)),diag(w.^(-0.5)),diag(w.^(-0.5)));
 B = B*IWB;
 E = blkdiag(eye(3*N), zeros(N));
 
